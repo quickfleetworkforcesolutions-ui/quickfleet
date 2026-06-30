@@ -1,0 +1,299 @@
+Build a cross-platform mobile application (React Native / Expo preferred) for **QuickFleet Workforce Solutions** — an Indian B2B company offering workforce supply, IT infrastructure support, and CCTV/security services.
+The app must mirror the existing public marketing website and connect to the SAME Spring Boot backend API already in use. Do NOT rebuild the admin panel. This is a customer-facing mobile app only.
+---
+## 1. PRODUCT OVERVIEW
+**App name:** QuickFleet  
+**Tagline:** Reliable Workforce & Technical Solutions for Growing Businesses  
+**Target users:** Business owners, HR managers, facility heads, and job seekers in India  
+**Core value:** Browse services, view company info, submit quote inquiries, browse jobs, apply with resume, view gallery, contact company
+**Backend base URL (configurable via env):**
+`http://localhost:8080/api/v1` (dev) — use env variable `API_BASE_URL`
+All API responses follow this wrapper:
+```json
+{
+  "success": true,
+  "message": "...",
+  "data": { ... }
+}
+Always unwrap data from responses. Paginated lists use Spring Page format:
+
+{
+  "content": [...],
+  "totalElements": 0,
+  "totalPages": 0
+}
+No authentication required for public app users.
+
+2. BRAND & DESIGN SYSTEM
+Visual style: Professional enterprise B2B — clean, trustworthy, modern
+Font: Inter (or system sans-serif)
+Colors:
+
+Primary blue: #0B5ED7 (buttons, links, headers)
+Primary dark: #06122b / #0a1530 (hero backgrounds, footer)
+Accent amber: #F59E0B (CTAs, highlights, badges)
+Surface/light gray: #F8FAFC (section backgrounds)
+Text ink: #1E293B
+Muted text: #64748B
+White cards with subtle borders and soft shadows
+UI patterns:
+
+Rounded corners (12–16px)
+Bottom tab navigation (5 tabs)
+Pull-to-refresh on list screens
+Loading skeletons while fetching
+Toast/snackbar for form success/error
+Native phone dialer + email links for contact info
+Image lightbox for gallery
+3. NAVIGATION (Bottom Tabs)
+Tab	Icon	Screen
+Home
+Home
+Dashboard with hero, stats, services preview, testimonials
+Services
+Briefcase
+Full services list + detail
+Careers
+Users
+Job listings + apply flow
+Gallery
+Image
+Photo grid with category filter
+Contact
+Phone
+Contact info + inquiry form
+Additional screens (stack navigation, not tabs):
+
+About Us
+Industries We Serve
+Service Detail (by slug)
+Job Application modal/screen
+Header: App logo "Q" in blue square + "QuickFleet" text. Hamburger or "More" menu for About, Industries, Gallery (if not in tabs).
+
+4. SCREENS & FEATURES
+4.1 HOME SCREEN
+Fetch from API on load:
+
+GET /cms/pages/home (fallback: GET /cms/pages/home by slug if home endpoint fails)
+GET /cms/settings
+GET /testimonial?page=0&size=20
+Sections to display:
+
+Hero banner
+
+From CMS section sectionType: "HERO"
+Fields: heading, subheading, backgroundImageUrl or imageUrl
+CTA button: buttonLabel → navigate to Contact
+Fallback headline: "Reliable Workforce & Technical Solutions for Growing Businesses"
+Trust badges (static fallback if no CMS):
+
+PAN India Service, Rapid Response, Skilled Professionals, Cost Effective
+Stats counter row (4 columns)
+
+From CMS section sectionType: "STATS", parse extraData JSON:
+{ "workforce": "12,000+", "clients": "350+", "projects": "1,200+", "satisfaction": "98%" }
+Labels: Workforce Deployed, Business Clients, Service Requests Handled, Customer Satisfaction
+About preview — short text + "Read more" → About screen
+
+Services preview — 3 service cards from GET /services/admin?status=PUBLISHED&page=0&size=50
+
+Show title, summary, banner image
+Tap → Service Detail
+Industries grid — from CMS CUSTOM section with cmsKey: "industries" in extraData:
+
+{ "cmsKey": "industries", "items": [{ "id", "name", "icon", "description", "visible" }] }
+Show 8 industry cards in 2-column grid
+Why Choose Us — from CMS CUSTOM cmsKey: "why-choose":
+
+{ "cmsKey": "why-choose", "items": [{ "id", "title", "icon", "description", "order" }] }
+Process timeline — from CMS CUSTOM cmsKey: "process":
+
+{ "cmsKey": "process", "items": [{ "id", "step", "title", "description" }] }
+4 numbered steps vertically
+Testimonials carousel — from /testimonial API, filter visible !== false
+
+Show clientName, clientTitle, clientCompany, testimonialText
+CTA banner — "Request a Quote" button → Contact tab
+
+4.2 ABOUT SCREEN
+GET /cms/pages/about
+Sections: ABOUT (body), MISSION (body), VISION (body)
+Core values from CUSTOM section cmsKey: "core-values": { "text": "..." }
+Stats from home page STATS section
+Why Choose Us from home CUSTOM why-choose
+4.3 SERVICES SCREEN
+GET /services/admin?status=PUBLISHED&page=0&size=50
+List 3 main service lines (or all published services):
+Workforce Solutions
+IT Infrastructure Support
+CCTV & Security Solutions
+Each card: title, summary, bannerImageUrl, featured badge
+Tap → Service Detail screen:
+GET /services/{slug}
+Show: title, summary, description, features (split by ; or newlines), banner image
+"Request a Quote" button → Contact with pre-filled service subject
+Fallback static data if API empty: use the 3 service groups with sub-items (Workforce, IT, CCTV categories).
+
+4.4 INDUSTRIES SCREEN
+From home CMS CUSTOM industries list
+2-column card grid: name, icon, description
+Fallback: Warehousing, Manufacturing, Logistics, Healthcare, Education, Corporate, Retail, Residential
+4.5 GALLERY SCREEN
+GET /gallery?page=0&size=100&category={optional}
+Categories: All, HERO, SERVICE, TEAM, EVENTS, TESTIMONIAL, PORTFOLIO, OTHER
+Masonry or 2-column grid with images from imageUrl
+Tap image → fullscreen lightbox with title
+Filter chips at top
+4.6 CAREERS SCREEN
+GET /careers?page=0&size=50&visible=true
+Job cards: title, location, employmentType, department/summary
+Tap "Apply" → Application form:
+Fields: Full Name*, Email*, Phone*, Experience*, Resume file* (PDF/DOC/DOCX)
+Submit: POST /careers/applications as multipart/form-data:
+jobSlug (required)
+candidateName (required)
+candidateEmail (required)
+candidatePhone (optional)
+coverLetter (optional — include "Experience: X years")
+resume (file)
+Success toast: "Application submitted. HR will contact you shortly."
+4.7 CONTACT SCREEN
+GET /cms/settings for contact info
+Display cards:
+Address (address)
+Phone (contactPhone, contactPhoneSecondary) — tap to call
+Email (contactEmail) — tap to email
+Business hours: "Mon – Sat · 9:00 AM to 7:00 PM IST" (static)
+Optional: map embed from mapEmbedUrl (WebView or open in maps app)
+Inquiry form — POST /inquiries (JSON):
+
+{
+  "name": "required",
+  "email": "required",
+  "phone": "optional",
+  "subject": "required",
+  "message": "required"
+}
+Form fields:
+
+Full Name*
+Company (optional — prepend to message)
+Phone*
+Email*
+Service Required* (dropdown from services list)
+City* (append to subject as "{service} — {city}")
+Message*
+Validation: email format, phone 7–15 digits, max lengths per backend.
+
+Success: "Inquiry received. We'll respond within one business day."
+
+5. CMS DATA PARSING HELPERS
+Implement these utilities:
+
+// Find section by type
+findSection(sections, "HERO" | "STATS" | "ABOUT" | "MISSION" | "VISION" | "CUSTOM", cmsKey?)
+// Parse CUSTOM list sections
+getListItems(sections, "industries" | "why-choose" | "process")
+// extraData shape: { "cmsKey": "industries", "items": [...] }
+// Parse stats from STATS section extraData
+parseStats(extraData) → [{ value: number, suffix: string, label: string }]
+6. WEBSITE SETTINGS (Global)
+GET /cms/settings returns:
+
+{
+  siteName, tagline, logoUrl, faviconUrl,
+  contactEmail, contactPhone, contactPhoneSecondary, address, mapEmbedUrl,
+  facebookUrl, instagramUrl, linkedinUrl, twitterUrl, youtubeUrl,
+  copyrightText, footerDescription
+}
+Use in: header branding, contact screen, footer/about, social links.
+
+7. API ENDPOINTS SUMMARY (All Public, No Auth)
+Method	Endpoint	Purpose
+GET
+/cms/pages/home
+Homepage CMS content
+GET
+/cms/pages/{slug}
+About/other pages
+GET
+/cms/settings
+Global settings
+GET
+/services/admin?status=PUBLISHED
+Published services list
+GET
+/services/{slug}
+Service detail
+GET
+/gallery?page=0&size=100
+Gallery images
+GET
+/careers?visible=true
+Job listings
+POST
+/careers/applications
+Job application (multipart)
+POST
+/inquiries
+Contact form (JSON)
+GET
+/testimonial?page=0&size=20
+Testimonials
+GET
+/banner?page=0&size=10
+Banners (optional hero carousel)
+8. OFFLINE & ERROR HANDLING
+Cache API responses locally (AsyncStorage) for 5 minutes
+Show static fallback content from bundled JSON if API fails (use the default QuickFleet copy from the website)
+Network error banner: "Unable to load latest content. Showing saved version."
+Form submissions require network — show clear error if offline
+Loading states on every screen
+Empty states: "No jobs available", "No gallery images yet"
+9. TECHNICAL REQUIREMENTS
+Framework: React Native with Expo (SDK 52+) OR Flutter — prefer React Native for API parity with existing web code
+State/API: React Query (TanStack Query) or equivalent
+Forms: React Hook Form + Zod validation
+Navigation: React Navigation (bottom tabs + stack)
+File upload: expo-document-picker for resume on careers apply
+Env config: API_BASE_URL in .env
+Deep linking: Optional — quickfleet://contact, quickfleet://careers/{slug}
+10. STATIC FALLBACK CONTENT (Bundle as assets/fallback.json)
+Company defaults:
+
+Name: QuickFleet Workforce Solutions
+Phone: +91 98765 43210
+Email: info@quickfleet.in
+Address: 2nd Floor, Corporate Tower, MG Road, Bengaluru, Karnataka 560001, India
+3 Service lines: Workforce Solutions, IT Infrastructure Support, CCTV & Security Solutions
+8 Industries: Warehousing, Manufacturing, Logistics, Healthcare, Education, Corporate, Retail, Residential
+4 Process steps: Submit Inquiry → Requirement Analysis → Workforce Deployment → Ongoing Support
+6 Why Choose Us reasons (Skilled Workforce, Quick Response, Cost Effective, etc.)
+
+11. DO NOT BUILD
+Admin panel / CMS editor
+User login / registration
+Payment processing
+Push notifications (v1)
+Chat/messaging
+3D globe or heavy WebGL animations from the website
+12. ACCEPTANCE CRITERIA
+✅ App loads home screen with live CMS data from backend
+✅ Contact form submits to POST /inquiries and shows success
+✅ Careers list loads from API; apply form uploads resume via multipart POST
+✅ Gallery loads images from API with category filter
+✅ Services load from published services API
+✅ Phone/email tap opens native dialer/mail app
+✅ Works on Android and iOS
+✅ Graceful fallback when backend is unreachable
+✅ Matches QuickFleet blue (
+#0B5ED7) + amber (
+#F59E0B) brand colors
+
+13. REFERENCE
+Existing web app folder structure for reference:
+
+Routes: Home, About, Services, Industries, Careers, Gallery, Contact
+API client: fetch-based, unwraps { success, data } wrapper
+CMS sections stored as typed blocks (HERO, STATS, ABOUT, MISSION, VISION, CUSTOM with JSON extraData)
+Build the complete mobile app with all screens, API integration, forms, and polished UI matching the QuickFleet enterprise brand.
